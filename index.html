@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS Management System</title>
+    <style>
+        /* --- GENERAL STYLES --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f0f2f5; display: flex; flex-direction: column; height: 100vh; color: #333; }
+        
+        /* HEADER */
+        header { background-color: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .header-title { font-size: 1.4em; font-weight: bold; }
+        .header-controls { display: flex; gap: 10px; }
+        .btn-header { background: #34495e; border: 1px solid #5d6d7e; color: white; padding: 5px 12px; cursor: pointer; border-radius: 4px; font-size: 0.9em; transition: background 0.2s; }
+        .btn-header:hover { background: #4a6278; }
+
+        /* MAIN LAYOUT */
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        .left-panel { flex: 2; padding: 15px; overflow-y: auto; background: #f0f2f5; }
+        .right-panel { flex: 1; padding: 15px; background-color: #fff; display: flex; flex-direction: column; border-left: 1px solid #ddd; box-shadow: -2px 0 5px rgba(0,0,0,0.05); }
+
+        /* DASHBOARD STATS */
+        .stats { display: flex; gap: 10px; margin-bottom: 20px; }
+        .stat-box { flex: 1; padding: 15px; border-radius: 8px; color: white; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .bg-blue { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .bg-green { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+        .bg-dark { background: linear-gradient(135deg, #34495e, #2c3e50); }
+        .stat-val { font-size: 1.6em; font-weight: bold; margin-top: 5px; display: block; }
+
+        /* ADD ITEM FORM */
+        .add-item-form { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e0e0e0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .form-row { display: flex; gap: 10px; margin-top: 10px; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 5px; flex: 1; font-size: 14px; outline: none; }
+        input:focus { border-color: #3498db; }
+        button.add-btn { background-color: #27ae60; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; white-space: nowrap;}
+        button.add-btn:hover { background-color: #219150; }
+
+        /* PRODUCT GRID */
+        .grid-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .product-card { 
+            position: relative; 
+            padding: 15px; 
+            border-radius: 8px; 
+            text-align: center; 
+            cursor: pointer; 
+            background: white; 
+            border: 1px solid #e0e0e0; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+            transition: transform 0.1s, box-shadow 0.1s; 
+            user-select: none;
+        }
+        .product-card:active { transform: scale(0.96); }
+        .product-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .card-item { border-bottom: 4px solid #3498db; }
+        .card-service { border-bottom: 4px solid #2ecc71; }
+        .p-name { font-weight: bold; display: block; margin-bottom: 5px; color: #444; }
+        .p-price { color: #777; font-size: 0.9em; }
+        
+        /* DELETE BUTTON ON CARD */
+        .delete-card-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            line-height: 20px;
+            text-align: center;
+            display: none; /* Hidden by default */
+            z-index: 10;
+        }
+        .grid.edit-mode .delete-card-btn { display: block; }
+
+        /* CART SECTION */
+        .cart-header { font-weight: bold; font-size: 1.2em; margin-bottom: 15px; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px; }
+        .cart-items { flex: 1; overflow-y: auto; padding-right: 5px; }
+        .cart-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; margin-bottom: 8px; border-radius: 6px; border: 1px solid #eee; }
+        .cart-controls { display: flex; align-items: center; gap: 8px; }
+        .qty-btn { width: 24px; height: 24px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer; font-weight: bold; color: #555; display: flex; align-items: center; justify-content: center;}
+        .qty-val { font-weight: bold; width: 20px; text-align: center; font-size: 0.9em; }
+        .remove-btn { color: #e74c3c; cursor: pointer; margin-left: 10px; font-size: 1.2em; }
+        
+        .total-section { margin-top: auto; padding-top: 20px; border-top: 2px solid #f0f2f5; }
+        .total-row { display: flex; justify-content: space-between; font-size: 1.4em; font-weight: bold; margin-bottom: 15px; color: #2c3e50; }
+        .checkout-btn { width: 100%; padding: 15px; background-color: #e74c3c; color: white; border: none; font-size: 1.2rem; cursor: pointer; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(231, 76, 60, 0.3); transition: transform 0.1s; }
+        .checkout-btn:hover { background-color: #c0392b; }
+        .checkout-btn:active { transform: scale(0.98); }
+
+        /* MODALS (Popups) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .close-modal { font-size: 1.5em; cursor: pointer; color: #777; }
+        
+        .history-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+        .history-header { display: flex; justify-content: space-between; font-weight: bold; color: #555; font-size: 0.9em; }
+        .history-details { font-size: 0.85em; color: #777; margin-top: 5px; }
+
+        /* RECEIPT PRINTING */
+        #printable-receipt { display: none; }
+        @media print {
+            header, .main-container, .modal { display: none !important; }
+            body { background: white; height: auto; }
+            #printable-receipt { 
+                display: block !important; 
+                width: 76mm; 
+                margin: 0 auto; 
+                padding: 5px; 
+                text-align: center; 
+                font-family: 'Courier New', monospace; 
+                font-size: 12px;
+            }
+            .r-header { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
+            .r-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+            .r-total { border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; font-weight: bold; font-size: 1.1em; text-align: right; }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .left-panel { flex: 1; order: 2; padding-bottom: 80px; } /* Add padding for bottom bar if needed */
+            .right-panel { flex: 1; order: 1; border-left: none; border-bottom: 2px solid #ddd; max-height: 45vh; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-title">POS Management System</div>
+    <div class="header-controls">
+        <button class="btn-header" onclick="toggleEditMode()" id="editModeBtn">Edit / Remove</button>
+        <button class="btn-header" onclick="showHistory()">View History</button>
+        <button class="btn-header" onclick="backupData()">Backup Data</button>
+        <button class="btn-header" onclick="document.getElementById('fileInput').click()">Restore Data</button>
+        <input type="file" id="fileInput" style="display: none;" onchange="restoreData(this)">
+    </div>
+</header>
+
+<div class="main-container">
+    <!-- LEFT SIDE: Inventory -->
+    <div class="left-panel">
+        
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-box bg-blue">
+                <small>Today's Item Sales</small>
+                <span id="totalItems" class="stat-val">0</span>
+            </div>
+            <div class="stat-box bg-green">
+                <small>Today's Service Sales</small>
+                <span id="totalServices" class="stat-val">0</span>
+            </div>
+            <div class="stat-box bg-dark">
+                <small>Today's Grand Total</small>
+                <span id="grandTotal" class="stat-val">0</span>
+            </div>
+        </div>
+
+        <!-- Add Form -->
+        <div class="add-item-form">
+            <div style="font-weight: bold; margin-bottom: 8px;">Add New Product/Service:</div>
+            <div class="form-row">
+                <input type="text" id="newName" placeholder="Name (e.g. Tea, Service)">
+                <input type="number" id="newPrice" placeholder="Price">
+                <select id="newType">
+                    <option value="item">Item (Product)</option>
+                    <option value="service">Service</option>
+                </select>
+            </div>
+            <div class="form-row" style="justify-content: flex-end;">
+                <button class="add-btn" onclick="addNewProduct()">Add Item (+)</button>
+            </div>
+        </div>
+
+        <!-- Grid -->
+        <div class="grid-header">
+            <h3>Products and Services</h3>
+        </div>
+        <div class="grid" id="productGrid">
+            <!-- Buttons will be generated by JS -->
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: Cart -->
+    <div class="right-panel">
+        <div class="cart-header">Current Receipt</div>
+        <div class="cart-items" id="cartList">
+            <div style="text-align:center; color:#999; margin-top:30px;">
+                Cart is empty.<br>Select items from the left.
+            </div>
+        </div>
+        
+        <div class="total-section">
+            <div class="total-row">
+                <span>Grand Total:</span>
+                <span id="cartTotal">0</span>
+            </div>
+            <button class="checkout-btn" onclick="checkoutAndPrint()">Complete Sale & Print</button>
+            <div style="text-align: center; margin-top: 10px;">
+                <a href="#" onclick="resetDay()" style="color: #777; font-size: 0.8em; text-decoration: none;">Reset Today's Totals</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div id="historyModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Past Transactions</h3>
+            <span class="close-modal" onclick="closeModal('historyModal')">&times;</span>
+        </div>
+        <div id="historyList">
+            <!-- History items here -->
+        </div>
+        <button onclick="clearHistory()" style="margin-top:15px; width:100%; padding:10px; background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer;">Clear All History</button>
+    </div>
+</div>
+
+<!-- PRINT RECEIPT TEMPLATE -->
+<div id="printable-receipt">
+    <div class="r-header">
+        <h2 style="margin:0;">My Shop</h2>
+        <p style="margin:2px;">Phone: 0300-1234567</p>
+        <small id="r-date"></small>
+    </div>
+    <div id="r-items"></div>
+    <div class="r-total">Total: <span id="r-total-amt">0</span></div>
+    <div style="margin-top:10px;">Thank You!</div>
+</div>
+
+<script>
+    // --- STATE MANAGEMENT ---
+    let inventory = JSON.parse(localStorage.getItem('pos_inventory_v3')) || [];
+    let salesData = JSON.parse(localStorage.getItem('pos_sales_v3')) || { items: 0, services: 0 };
+    let transactionHistory = JSON.parse(localStorage.getItem('pos_history_v3')) || [];
+    let currentCart = []; // Format: { id, name, price, type, qty }
+    let isEditMode = false;
+
+    // --- INITIALIZATION ---
+    updateDashboard();
+    renderGrid();
+
+    // --- INVENTORY FUNCTIONS ---
+    function addNewProduct() {
+        const name = document.getElementById('newName').value;
+        const price = parseFloat(document.getElementById('newPrice').value);
+        const type = document.getElementById('newType').value;
+
+        if (name && !isNaN(price) && price > 0) {
+            const newItem = { id: Date.now(), name, price, type };
+            inventory.push(newItem);
+            saveInventory();
+            renderGrid();
+            
+            // Clear inputs
+            document.getElementById('newName').value = '';
+            document.getElementById('newPrice').value = '';
+        } else {
+            // Translated Alert
+            alert("Name and Price (greater than zero) are both required!");
+        }
+    }
+
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        document.getElementById('productGrid').classList.toggle('edit-mode');
+        // Translated Button Text
+        document.getElementById('editModeBtn').innerText = isEditMode ? "Done Editing" : "Edit / Remove";
+        document.getElementById('editModeBtn').style.background = isEditMode ? "#e74c3c" : "#34495e";
+    }
+
+    function deleteProduct(id, event) {
+        event.stopPropagation(); // Prevent card click
+        // Translated Confirmation
+        if(confirm("Are you sure you want to permanently delete this item?")) {
+            inventory = inventory.filter(item => item.id !== id);
+            saveInventory();
+            renderGrid();
+        }
+    }
+
+    function saveInventory() {
+        localStorage.setItem('pos_inventory_v3', JSON.stringify(inventory));
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('productGrid');
+        grid.innerHTML = '';
+        
+        if (inventory.length === 0) {
+            // Translated Message
+            grid.innerHTML = '<p style="color:#888; grid-column: 1/-1; text-align:center;">No items currently. Add some using the form above.</p>';
+            return;
+        }
+
+        inventory.forEach(prod => {
+            const div = document.createElement('div');
+            div.className = `product-card ${prod.type === 'item' ? 'card-item' : 'card-service'}`;
+            div.onclick = () => addToCart(prod);
+            
+            div.innerHTML = `
+                <div class="delete-card-btn" onclick="deleteProduct(${prod.id}, event)">x</div>
+                <span class="p-name">${prod.name}</span>
+                <span class="p-price">${prod.price}</span>
+            `;
+            grid.appendChild(div);
+        });
+
+        // Maintain edit mode visual state
+        if(isEditMode) grid.classList.add('edit-mode');
+        else grid.classList.remove('edit-mode');
+    }
+
+    // --- CART FUNCTIONS ---
+    function addToCart(product) {
+        const existingItem = currentCart.find(item => item.id === product.id);
+        
+        if (existingItem) {
+            existingItem.qty++;
+        } else {
+            currentCart.push({ ...product, qty: 1 });
+        }
+        renderCart();
+    }
+
+    function changeQty(index, change) {
+        currentCart[index].qty += change;
+        if (currentCart[index].qty <= 0) {
+            currentCart.splice(index, 1);
+        }
+        renderCart();
+    }
+
+    function removeFromCart(index) {
+        currentCart.splice(index, 1);
+        renderCart();
+    }
+
+    function renderCart() {
+        const list = document.getElementById('cartList');
+        const totalEl = document.getElementById('cartTotal');
+        list.innerHTML = '';
+        let total = 0;
+
+        currentCart.forEach((item, index) => {
+            const itemTotal = item.price * item.qty;
+            total += itemTotal;
+            
+            const row = document.createElement('div');
+            row.className = 'cart-row';
+            row.innerHTML = `
+                <div style="flex:1;">
+                    <div style="font-weight:500;">${item.name}</div>
+                    <div style="font-size:0.8em; color:#777;">${item.price} x ${item.qty}</div>
+                </div>
+                <div class="cart-controls">
+                    <button class="qty-btn" onclick="changeQty(${index}, -1)">-</button>
+                    <span class="qty-val">${item.qty}</span>
+                    <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+                    <span style="min-width:40px; text-align:right; font-weight:bold;">${itemTotal}</span>
+                    <span class="remove-btn" onclick="removeFromCart(${index})">&times;</span>
+                </div>
+            `;
+            list.appendChild(row);
+        });
+
+        if (currentCart.length === 0) {
+            // Translated Message
+            list.innerHTML = '<div style="text-align:center; color:#999; margin-top:30px;">Cart is empty.</div>';
+        }
+        
+        totalEl.innerText = total;
+    }
+
+    // --- CHECKOUT & PRINT ---
+    function checkoutAndPrint() {
+        if (currentCart.length === 0) {
+            // Translated Alert
+            alert("The cart is empty!");
+            return;
+        }
+
+        let saleTotal = 0;
+        let saleItems = [];
+
+        // Calculate and Update Dashboard Stats
+        currentCart.forEach(p => {
+            const lineTotal = p.price * p.qty;
+            saleTotal += lineTotal;
+            
+            if (p.type === 'item') salesData.items += lineTotal;
+            else salesData.services += lineTotal;
+
+            saleItems.push({ name: p.name, qty: p.qty, price: p.price, total: lineTotal });
+        });
+
+        // Save Transaction History
+        const transaction = {
+            id: Date.now(),
+            date: new Date().toLocaleString(),
+            items: saleItems,
+            total: saleTotal
+        };
+        transactionHistory.unshift(transaction); // Add to top
+        localStorage.setItem('pos_history_v3', JSON.stringify(transactionHistory));
+        localStorage.setItem('pos_sales_v3', JSON.stringify(salesData));
+
+        updateDashboard();
+
+        // Print Receipt
+        printReceipt(transaction);
+
+        // Clear Cart
+        currentCart = [];
+        renderCart();
+    }
+
+    function printReceipt(transaction) {
+        const rItems = document.getElementById('r-items');
+        rItems.innerHTML = '';
+        document.getElementById('r-date').innerText = transaction.date;
+        document.getElementById('r-total-amt').innerText = transaction.total;
+
+        transaction.items.forEach(item => {
+            rItems.innerHTML += `
+                <div class="r-row">
+                    <span>${item.name} x${item.qty}</span>
+                    <span>${item.total}</span>
+                </div>`;
+        });
+
+        window.print();
+    }
+
+    function updateDashboard() {
+        document.getElementById('totalItems').innerText = salesData.items;
+        document.getElementById('totalServices').innerText = salesData.services;
+        document.getElementById('grandTotal').innerText = salesData.items + salesData.services;
+    }
+
+    function resetDay() {
+        // Translated Confirmation
+        if(confirm("ALERT: Are you sure you want to reset today's account to ZERO? (History will not be deleted, only dashboard will reset)")) {
+            salesData = { items: 0, services: 0 };
+            localStorage.setItem('pos_sales_v3', JSON.stringify(salesData));
+            updateDashboard();
+        }
+    }
+
+    // --- HISTORY MODAL ---
+    function showHistory() {
+        const list = document.getElementById('historyList');
+        list.innerHTML = '';
+        
+        if (transactionHistory.length === 0) {
+            // Translated Message
+            list.innerHTML = '<p style="text-align:center">No past record found.</p>';
+        } else {
+            transactionHistory.slice(0, 50).forEach(t => { // Show last 50
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                // Items string
+                const itemSummary = t.items.map(i => `${i.name} (${i.qty})`).join(', ');
+                
+                div.innerHTML = `
+                    <div class="history-header">
+                        <span>${t.date}</span>
+                        <span style="color:#2c3e50;">Total: ${t.total}</span>
+                    </div>
+                    <div class="history-details">${itemSummary}</div>
+                `;
+                list.appendChild(div);
+            });
+        }
+        document.getElementById('historyModal').style.display = 'flex';
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    function clearHistory() {
+        // Translated Confirmation
+        if(confirm("Are you sure you want to delete the entire record? This cannot be undone!")) {
+            transactionHistory = [];
+            localStorage.setItem('pos_history_v3', JSON.stringify(transactionHistory));
+            showHistory();
+        }
+    }
+
+    // --- BACKUP & RESTORE ---
+    function backupData() {
+        const data = {
+            inventory: inventory,
+            salesData: salesData,
+            history: transactionHistory
+        };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", "dukan_pos_backup_" + new Date().toISOString().slice(0,10) + ".json");
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function restoreData(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.inventory && data.salesData) {
+                    // Translated Confirmation
+                    if(confirm("Do you really want to restore old data? Current data will be overwritten.")) {
+                        localStorage.setItem('pos_inventory_v3', JSON.stringify(data.inventory));
+                        localStorage.setItem('pos_sales_v3', JSON.stringify(data.salesData));
+                        localStorage.setItem('pos_history_v3', JSON.stringify(data.history || []));
+                        location.reload(); // Refresh to load new data
+                    }
+                } else {
+                    // Translated Alert
+                    alert("Incorrect file format.");
+                }
+            } catch (err) {
+                // Translated Alert
+                alert("Issue reading the file.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // Close modal on outside click
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('historyModal')) {
+            closeModal('historyModal');
+        }
+    }
+</script>
+
+</body>
+</html>
