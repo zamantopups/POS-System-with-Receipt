@@ -151,8 +151,9 @@
                 font-size: 14px; /* Increased font size */
             }
             .r-header { border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px; }
-            .r-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-            .r-total { border-top: 1px dashed #000; padding-top: 8px; margin-top: 8px; font-weight: bold; font-size: 1.2em; text-align: right; }
+            /* Adjusted r-row style for better alignment using display: grid in JS */
+            /* .r-row { display: flex; justify-content: space-between; margin-bottom: 4px; } */ 
+            .r-total { border-top: 1px dashed #000; padding-top: 8px; margin-top: 8px; font-weight: bold; font-size: 1.2em; /* text-align: right; removed, handled by grid */ } 
             
             /* Print style for DATEWISE REPORT */
             #printable-datewise {
@@ -335,7 +336,11 @@
         <small id="r-date"></small>
     </div>
     <div id="r-items"></div>
-    <div class="r-total">Total: <span id="r-total-amt">0</span></div>
+    <!-- Adjusted r-total structure for better column alignment -->
+    <div class="r-total" style="display: grid; grid-template-columns: 60% 40%; text-align: right;">
+        <span style="text-align: left;">Total:</span>
+        <span id="r-total-amt">0</span>
+    </div>
     <div style="margin-top:10px;">Thank You!</div>
 </div>
 
@@ -582,11 +587,12 @@
         document.getElementById('r-date').innerText = transaction.date;
         document.getElementById('r-total-amt').innerText = transaction.total;
 
+        // Use CSS Grid for better item/total alignment on single receipt
         transaction.items.forEach(item => {
             rItems.innerHTML += `
-                <div class="r-row">
-                    <span>${item.name} x${item.qty}</span>
-                    <span>${item.total}</span>
+                <div style="display: grid; grid-template-columns: 70% 30%; margin-bottom: 2px; text-align: left;">
+                    <span style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name} x${item.qty}</span>
+                    <span style="text-align: right;">${item.total}</span>
                 </div>`;
         });
 
@@ -781,26 +787,27 @@
             
             // Transaction Header for Report
             reportHtml += `<div class="report-txn">`;
-            reportHtml += `<div class="report-txn-header">Transaction ID: ${txn.id % 10000} | Date: ${txn.date}</div>`;
+            reportHtml += `<div class="report-txn-header" style="margin-bottom: 8px;">Transaction ID: ${txn.id % 10000} | Date: ${txn.date}</div>`;
             
-            // Transaction Items
+            // Transaction Items Header (Using CSS Grid for alignment)
             reportHtml += `
-                <div style="display:flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; border-bottom: 1px dotted #ccc; padding-bottom: 2px; font-size: 0.9em;">
-                    <span style="width: 50%;">Item (Qty x Price)</span>
-                    <span style="width: 20%; text-align: right;">Line Total</span>
+                <div style="display:grid; grid-template-columns: 70% 30%; font-weight: bold; margin-bottom: 5px; border-bottom: 1px dotted #444; padding-bottom: 2px; font-size: 0.9em; padding-left: 5px;">
+                    <span>Item (Qty x Price)</span>
+                    <span style="text-align: right;">Line Total</span>
                 </div>`;
                 
+            // Transaction Items (Using CSS Grid for alignment)
             txn.items.forEach(item => {
                 reportHtml += `
-                    <div class="r-row" style="font-size:0.85em;">
-                        <span style="width: 50%; overflow: hidden;">${item.name} (${item.qty} x ${item.price})</span>
-                        <span style="width: 20%; text-align: right;">${item.total}</span>
+                    <div style="display:grid; grid-template-columns: 70% 30%; font-size:0.85em; margin-bottom: 2px; padding-left: 5px;">
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name} (${item.qty} x ${item.price})</span>
+                        <span style="text-align: right;">${item.total}</span>
                     </div>`;
             });
 
             // Transaction Total
-            reportHtml += `<div style="display:flex; justify-content: flex-end; font-weight: bold; margin-top: 5px;">
-                            <span style="width: 40%; text-align: right; border-top: 1px dashed #444; padding-top: 5px;">Sale Total: ${txn.total}</span>
+            reportHtml += `<div style="display:flex; justify-content: flex-end; font-weight: bold; margin-top: 5px; border-top: 1px dashed #444; padding-top: 5px;">
+                            <span style="width: 40%; text-align: right; margin-right: 5px;">Sale Total: ${txn.total}</span>
                            </div>`;
             reportHtml += `</div>`;
         });
