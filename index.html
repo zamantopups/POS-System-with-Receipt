@@ -139,20 +139,49 @@
         @media print {
             header, .main-container, .modal { display: none !important; }
             body { background: white; height: auto; }
-            #printable-receipt, #printable-datewise { 
+            
+            /* Print style for SINGLE RECEIPT */
+            #printable-receipt { 
                 display: block !important; 
                 width: 76mm; 
                 margin: 0 auto; 
-                padding: 5px; 
+                padding: 10px 5px; 
                 text-align: center; 
                 font-family: 'Courier New', monospace; 
-                font-size: 12px;
+                font-size: 14px; /* Increased font size */
             }
-            .r-header { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-            .r-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
-            .r-total { border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; font-weight: bold; font-size: 1.1em; text-align: right; }
-            .report-txn { border-top: 1px dotted #888; padding: 5px 0; margin-top: 5px; }
-            .report-txn-header { font-weight: bold; margin-bottom: 2px; }
+            .r-header { border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px; }
+            .r-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+            .r-total { border-top: 1px dashed #000; padding-top: 8px; margin-top: 8px; font-weight: bold; font-size: 1.2em; text-align: right; }
+            
+            /* Print style for DATEWISE REPORT */
+            #printable-datewise {
+                display: block !important;
+                width: 100%; /* Use full width for a proper report */
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                font-family: Arial, sans-serif; 
+                font-size: 12px;
+                border: 1px solid #444; 
+                text-align: left !important;
+            }
+            #printable-datewise .r-header { 
+                border-bottom: 2px solid #444; 
+                text-align: center; 
+                margin-bottom: 15px;
+            }
+            .report-txn { 
+                border-top: 1px dotted #888; 
+                padding: 8px 0; 
+                margin-top: 8px; 
+            }
+            .report-txn-header { 
+                font-weight: bold; 
+                margin-bottom: 5px; 
+                font-size: 1.1em;
+                color: #2c3e50;
+            }
         }
 
         /* RESPONSIVE */
@@ -314,13 +343,15 @@
 <div id="printable-datewise">
     <div class="r-header">
         <h2 style="margin:0;">Zaman Services</h2>
-        <p style="margin:2px; font-size: 10px;">Daily/Datewise Sales Report</p>
+        <p style="margin:2px; font-size: 14px; font-weight: bold;">Datewise Sales Report</p>
         <p style="margin:2px;"><small id="report-date-range"></small></p>
         <small id="report-print-date"></small>
     </div>
     <div id="report-transactions"></div>
-    <div class="r-total" style="font-size: 1.2em;">GRAND TOTAL: <span id="report-grand-total">0</span></div>
-    <div style="margin-top:10px;">-- End of Report --</div>
+    <div class="r-total" style="font-size: 1.2em; border-top: 2px solid #444; margin-top: 20px; padding-top: 10px; text-align: left;">
+        GRAND TOTAL: <span id="report-grand-total" style="float: right;">0</span>
+    </div>
+    <div style="margin-top:20px; text-align: center;">-- End of Report --</div>
 </div>
 
 <script>
@@ -341,15 +372,12 @@
 
     // --- UTILITY FUNCTIONS ---
     /**
-     * Converts the date string from the transaction (e.g., "12/12/2025, 5:17:00 PM")
-     * into a standard Date object for comparison.
-     * Note: The transaction date stored is local format, which might be tricky. 
-     * We'll use ISO format for reliable comparison.
+     * Converts the date string from the transaction into a standard Date object for comparison.
      * @param {string} dateString 
      * @returns {Date}
      */
     function parseTransactionDate(dateString) {
-        // Attempt to parse the stored date string
+        // Fallback for old transactions without isoDate
         return new Date(dateString);
     }
     
@@ -544,6 +572,11 @@
     }
     
     function printReceipt(transaction) {
+        // 1. Hide the report template to prevent interference
+        document.getElementById('printable-datewise').style.display = 'none';
+        // 2. Ensure single receipt template is visible (though @media print handles this too, safer to set)
+        document.getElementById('printable-receipt').style.display = 'block';
+
         const rItems = document.getElementById('r-items');
         rItems.innerHTML = '';
         document.getElementById('r-date').innerText = transaction.date;
@@ -558,6 +591,9 @@
         });
 
         window.print();
+        
+        // 3. Hide the single receipt template after printing
+        document.getElementById('printable-receipt').style.display = 'none';
     }
 
     function updateDashboard() {
@@ -569,7 +605,6 @@
         document.getElementById('totalExpenses').innerText = totalExpenses;
         
         const grandTotal = salesData.items + salesData.services + salesData.aq - totalExpenses;
-        // This element is now present in the HTML (id="grandTotal" in the new stat box)
         document.getElementById('grandTotal').innerText = grandTotal; 
     }
 
@@ -727,7 +762,7 @@
         const filteredTransactions = transactionHistory.filter(txn => {
             if (txn.type !== 'sale') return false;
             
-            // Fallback for old transactions without isoDate
+            // Use isoDate if available, otherwise fallback to parsing local string
             const txnDate = txn.isoDate ? new Date(txn.isoDate) : parseTransactionDate(txn.date);
 
             return txnDate >= fromDate && txnDate <= toDate;
@@ -744,28 +779,37 @@
         filteredTransactions.forEach(txn => {
             totalSales += txn.total;
             
-            // Transaction Header
+            // Transaction Header for Report
             reportHtml += `<div class="report-txn">`;
-            reportHtml += `<div class="report-txn-header">Sale ID: #${txn.id % 10000}</div>`;
-            reportHtml += `<small>Date: ${txn.date}</small>`;
-
+            reportHtml += `<div class="report-txn-header">Transaction ID: ${txn.id % 10000} | Date: ${txn.date}</div>`;
+            
             // Transaction Items
+            reportHtml += `
+                <div style="display:flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; border-bottom: 1px dotted #ccc; padding-bottom: 2px; font-size: 0.9em;">
+                    <span style="width: 50%;">Item (Qty x Price)</span>
+                    <span style="width: 20%; text-align: right;">Line Total</span>
+                </div>`;
+                
             txn.items.forEach(item => {
                 reportHtml += `
-                    <div class="r-row" style="font-size:0.9em;">
-                        <span style="max-width: 60%; overflow: hidden;">- ${item.name} (${item.qty} x ${item.price})</span>
-                        <span>${item.total}</span>
+                    <div class="r-row" style="font-size:0.85em;">
+                        <span style="width: 50%; overflow: hidden;">${item.name} (${item.qty} x ${item.price})</span>
+                        <span style="width: 20%; text-align: right;">${item.total}</span>
                     </div>`;
             });
 
             // Transaction Total
-            reportHtml += `<div class="r-row" style="font-weight: bold; margin-top: 5px; border-top: 1px dashed #ddd;">
-                            <span>Transaction Total:</span>
-                            <span>${txn.total}</span>
+            reportHtml += `<div style="display:flex; justify-content: flex-end; font-weight: bold; margin-top: 5px;">
+                            <span style="width: 40%; text-align: right; border-top: 1px dashed #444; padding-top: 5px;">Sale Total: ${txn.total}</span>
                            </div>`;
             reportHtml += `</div>`;
         });
         
+        // 1. Hide the single receipt template
+        document.getElementById('printable-receipt').style.display = 'none';
+        // 2. Ensure datewise report template is visible
+        document.getElementById('printable-datewise').style.display = 'block';
+
         // Populate the printable area for datewise report
         document.getElementById('report-date-range').innerText = `Report From: ${fromDateStr} To: ${toDateStr}`;
         document.getElementById('report-print-date').innerText = `Printed On: ${new Date().toLocaleString()}`;
@@ -775,7 +819,7 @@
         // Trigger Print
         window.print();
 
-        // After printing, ensure the single receipt template is hidden again
+        // 3. Hide the datewise template after printing
         document.getElementById('printable-datewise').style.display = 'none';
     }
 
