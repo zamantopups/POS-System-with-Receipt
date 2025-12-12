@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Management System (Updated)</title>
+    <title>POS Management System (Manual Quantity)</title>
     <style>
         /* --- GENERAL STYLES --- */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f0f2f5; display: flex; flex-direction: column; height: 100vh; color: #333; }
@@ -98,12 +98,21 @@
         .checkout-btn.print-btn:hover { background-color: #2980b9; }
         .checkout-btn:active { transform: scale(0.98); }
         
-        /* MODALS (Popups) */
+        /* MODALS (Popups) - Reused for History and Messages */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         .close-modal { font-size: 1.5em; cursor: pointer; color: #777; }
+
+        /* Custom Message Box Styles */
+        #messageModal .modal-content { max-width: 350px; text-align: center; }
+        #messageModal .modal-header { justify-content: center; border: none; }
+        #messageModal .modal-footer { margin-top: 15px; }
+        #messageModal .confirm-btn, #messageModal .cancel-btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 0 5px; }
+        #messageModal .confirm-btn { background-color: #2ecc71; color: white; }
+        #messageModal .cancel-btn { background-color: #f39c12; color: white; }
         
+        /* History & Report Styles */
         .history-item { border-bottom: 1px solid #eee; padding: 10px 0; }
         .history-header { display: flex; justify-content: space-between; font-weight: bold; color: #555; font-size: 0.9em; }
         .history-details { font-size: 0.85em; color: #777; margin-top: 5px; display: flex; justify-content: space-between; align-items: center; }
@@ -148,17 +157,15 @@
                 padding: 10px 5px; 
                 text-align: center; 
                 font-family: 'Courier New', monospace; 
-                font-size: 14px; /* Increased font size */
+                font-size: 14px; 
             }
             .r-header { border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px; }
-            /* Adjusted r-row style for better alignment using display: grid in JS */
-            /* .r-row { display: flex; justify-content: space-between; margin-bottom: 4px; } */ 
-            .r-total { border-top: 1px dashed #000; padding-top: 8px; margin-top: 8px; font-weight: bold; font-size: 1.2em; /* text-align: right; removed, handled by grid */ } 
+            .r-total { border-top: 1px dashed #000; padding-top: 8px; margin-top: 8px; font-weight: bold; font-size: 1.2em; } 
             
             /* Print style for DATEWISE REPORT */
             #printable-datewise {
                 display: block !important;
-                width: 100%; /* Use full width for a proper report */
+                width: 100%; 
                 max-width: 800px;
                 margin: 0 auto;
                 padding: 20px;
@@ -198,11 +205,11 @@
 <body>
 
 <header>
-    <div class="header-title">POS Management System (Updated)</div>
+    <div class="header-title">POS System</div>
     <div class="header-controls">
-        <button class="btn-header" onclick="toggleEditMode()" id="editModeBtn">Edit / Remove</button>
+        <button class="btn-header" onclick="toggleEditMode()" id="editModeBtn">Edit / Delete</button>
         <button class="btn-header" onclick="showHistory()">View History</button>
-        <button class="btn-header" onclick="backupData()">Backup Data</button>
+        <button class="btn-header" onclick="backupData()">Backup</button>
         <button class="btn-header" onclick="document.getElementById('fileInput').click()">Restore Data</button>
         <input type="file" id="fileInput" style="display: none;" onchange="restoreData(this)">
     </div>
@@ -232,7 +239,7 @@
             </div>
             <!-- NEW BOX FOR GRAND TOTAL -->
             <div class="stat-box bg-dark" style="grid-column: 1 / -1;">
-                <small>Today's Net Total (Sales - Expenses)</small>
+                <small>Today's Grand Total (Net)</small>
                 <span id="grandTotal" class="stat-val">0</span>
             </div>
         </div>
@@ -241,7 +248,7 @@
         <div class="card-form">
             <div style="font-weight: bold; margin-bottom: 8px;">Add New Product/Service:</div>
             <div class="form-row">
-                <input type="text" id="newName" placeholder="Name (e.g. Tea, Service)">
+                <input type="text" id="newName" placeholder="Name (e.g., Tea, Service)">
                 <input type="number" id="newPrice" placeholder="Price">
                 <select id="newType">
                     <option value="item">Item (Product)</option>
@@ -258,7 +265,7 @@
         <div class="card-form">
             <div style="font-weight: bold; margin-bottom: 8px;">Add New Expense:</div>
             <div class="form-row">
-                <input type="text" id="expenseName" placeholder="Expense Name (e.g. Electricity Bill)">
+                <input type="text" id="expenseName" placeholder="Expense Name (e.g., Electricity Bill)">
                 <input type="number" id="expenseAmount" placeholder="Amount">
             </div>
             <div class="form-row" style="justify-content: flex-end;">
@@ -277,6 +284,17 @@
 
     <!-- RIGHT SIDE: Cart -->
     <div class="right-panel">
+        
+        <!-- MANUAL QUANTITY INPUT AREA -->
+        <div id="manualInputArea" class="card-form" style="display:none; margin-bottom: 10px; background: #e6f7ff; border-color: #3498db; padding: 10px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">Adding: <span id="manualItemName" style="color:#2980b9;"></span></div>
+            <div class="form-row" style="margin-top: 0;">
+                <input type="number" id="manualQtyInput" placeholder="Enter Quantity" min="1" value="1" style="flex:2;">
+                <button class="action-btn" onclick="confirmAddToCart()" style="flex:1; background: #3498db; white-space: normal; padding: 8px;">Confirm Quantity</button>
+            </div>
+            <small id="qtyError" style="color: #c0392b; display: none; font-weight: bold;">Quantity must be a positive number!</small>
+        </div>
+        
         <div class="cart-header">Current Receipt</div>
         <div class="cart-items" id="cartList">
             <div style="text-align:center; color:#999; margin-top:30px;">
@@ -286,13 +304,13 @@
         
         <div class="total-section">
             <div class="total-row">
-                <span>Grand Total:</span>
+                <span>Total Amount:</span>
                 <span id="cartTotal">0</span>
             </div>
-            <button class="checkout-btn" onclick="completeSale()">Complete Sale</button>
+            <button class="checkout-btn" onclick="showConfirmationModal('sale')">Complete Sale</button>
             <button class="checkout-btn print-btn" onclick="printLastSale()">Print Last Receipt</button>
             <div style="text-align: center; margin-top: 10px;">
-                <a href="#" onclick="resetDay()" style="color: #777; font-size: 0.8em; text-decoration: none;">Reset Today's Totals</a>
+                <a href="#" onclick="showConfirmationModal('reset')" style="color: #777; font-size: 0.8em; text-decoration: none;">Reset Today's Totals</a>
             </div>
         </div>
     </div>
@@ -302,7 +320,7 @@
 <div id="historyModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Past Transactions & Expenses</h3>
+            <h3>Past Transactions and Expenses</h3>
             <span class="close-modal" onclick="closeModal('historyModal')">&times;</span>
         </div>
         
@@ -323,7 +341,22 @@
         <div id="expenseHistoryList">
             <!-- Expense items here -->
         </div>
-        <button onclick="clearAllData()" style="margin-top:25px; width:100%; padding:10px; background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer;">Clear ALL Data (Sales, Expenses, Inventory)</button>
+        <button onclick="showConfirmationModal('clear')" style="margin-top:25px; width:100%; padding:10px; background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer;">Clear All Data (Sales, Expenses, Inventory)</button>
+    </div>
+</div>
+
+<!-- CUSTOM MESSAGE/CONFIRMATION MODAL -->
+<div id="messageModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Notification</h3>
+        </div>
+        <p id="modalMessage" style="margin-bottom: 20px;">This is a message.</p>
+        <div class="modal-footer">
+            <button id="modalConfirmBtn" class="confirm-btn" style="display:none;">Yes</button>
+            <button id="modalCancelBtn" class="cancel-btn" style="display:none;">Cancel</button>
+            <button id="modalOkBtn" class="confirm-btn">OK</button>
+        </div>
     </div>
 </div>
 
@@ -361,7 +394,6 @@
 
 <script>
     // --- STATE MANAGEMENT ---
-    // Using v4 for new data structure
     let inventory = JSON.parse(localStorage.getItem('pos_inventory_v4')) || [];
     let salesData = JSON.parse(localStorage.getItem('pos_sales_v4')) || { items: 0, services: 0, aq: 0 };
     let expenses = JSON.parse(localStorage.getItem('pos_expenses_v4')) || [];
@@ -369,20 +401,115 @@
     let currentCart = []; // Format: { id, name, price, type, qty }
     let isEditMode = false;
     let lastTransaction = JSON.parse(localStorage.getItem('pos_last_txn_v4')) || null;
-
+    
+    // Variable to hold the product selected for manual quantity input
+    let productToAdd = null; 
 
     // --- INITIALIZATION ---
     updateDashboard();
     renderGrid();
 
-    // --- UTILITY FUNCTIONS ---
+    // --- MESSAGE/CONFIRMATION MODAL FUNCTIONS ---
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
     /**
-     * Converts the date string from the transaction into a standard Date object for comparison.
-     * @param {string} dateString 
-     * @returns {Date}
+     * Shows a modal for a simple message.
+     * @param {string} title 
+     * @param {string} message 
      */
+    function showModalMessage(title, message) {
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMessage').innerText = message;
+        
+        // Hide confirmation buttons, show only OK
+        document.getElementById('modalConfirmBtn').style.display = 'none';
+        document.getElementById('modalCancelBtn').style.display = 'none';
+        document.getElementById('modalOkBtn').style.display = 'inline-block';
+        
+        // Set up OK button to close the modal
+        document.getElementById('modalOkBtn').onclick = () => closeModal('messageModal');
+        
+        document.getElementById('messageModal').style.display = 'flex';
+    }
+
+    /**
+     * Shows a modal for confirmation (replaces window.confirm)
+     * @param {string} actionType - 'clear', 'reset', 'sale', 'delete_txn', 'delete_exp', 'delete_prod', 'restore'
+     * @param {any} data - extra data needed for the action (e.g., id)
+     */
+    function showConfirmationModal(actionType, data = null) {
+        let title, message, confirmText;
+        let confirmAction;
+
+        switch (actionType) {
+            case 'clear':
+                title = "WARNING: Clear All Data";
+                message = "Are you sure you want to permanently delete all data (Inventory, Sales, Expenses, History)? This action cannot be undone!";
+                confirmText = "Clear";
+                confirmAction = clearAllDataConfirmed;
+                break;
+            case 'reset':
+                title = "Reset Daily Totals";
+                message = "Are you sure you want to reset today's dashboard totals to zero? (History will remain, only dashboard is reset)";
+                confirmText = "Reset";
+                confirmAction = resetDayConfirmed;
+                break;
+            case 'sale':
+                title = "Complete Sale";
+                message = `Are you sure you want to complete the sale for a total of ${document.getElementById('cartTotal').innerText}?`;
+                confirmText = "Complete";
+                confirmAction = completeSaleConfirmed;
+                break;
+            case 'delete_prod':
+                title = "Delete Item";
+                message = "Are you sure you want to permanently delete this item?";
+                confirmText = "Delete";
+                confirmAction = () => deleteProductConfirmed(data);
+                break;
+            case 'delete_txn':
+                title = "Delete Sale";
+                message = `Are you sure you want to delete this sale transaction? Total: ${data.total}`;
+                confirmText = "Delete";
+                confirmAction = () => deleteTransactionConfirmed(data.id);
+                break;
+            case 'delete_exp':
+                title = "Delete Expense";
+                message = `Are you sure you want to delete the expense: ${data.name}?`;
+                confirmText = "Delete";
+                confirmAction = () => deleteExpenseConfirmed(data.id);
+                break;
+            case 'restore':
+                title = "Restore Data";
+                message = "Are you sure you want to restore old data? Current data will be overwritten.";
+                confirmText = "Restore";
+                confirmAction = () => restoreDataConfirmed(data);
+                break;
+            default:
+                return;
+        }
+
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMessage').innerText = message;
+        
+        document.getElementById('modalConfirmBtn').innerText = confirmText;
+        document.getElementById('modalConfirmBtn').style.display = 'inline-block';
+        document.getElementById('modalCancelBtn').style.display = 'inline-block';
+        document.getElementById('modalOkBtn').style.display = 'none';
+
+        // Assign actions
+        document.getElementById('modalConfirmBtn').onclick = () => {
+            confirmAction();
+            closeModal('messageModal');
+        };
+        document.getElementById('modalCancelBtn').onclick = () => closeModal('messageModal');
+        
+        document.getElementById('messageModal').style.display = 'flex';
+    }
+    
+    // --- UTILITY FUNCTIONS ---
     function parseTransactionDate(dateString) {
-        // Fallback for old transactions without isoDate
         return new Date(dateString);
     }
     
@@ -405,25 +532,35 @@
             // Clear inputs
             document.getElementById('newName').value = '';
             document.getElementById('newPrice').value = '';
+            showModalMessage("Success", "New item added successfully.");
         } else {
-            alert("Name and Price (greater than zero) are both required!");
+            showModalMessage("Error", "Item name and price (greater than zero) are both required.");
         }
     }
 
     function toggleEditMode() {
         isEditMode = !isEditMode;
         document.getElementById('productGrid').classList.toggle('edit-mode');
-        document.getElementById('editModeBtn').innerText = isEditMode ? "Done Editing" : "Edit / Remove";
+        document.getElementById('editModeBtn').innerText = isEditMode ? "Finish Editing" : "Edit / Delete";
         document.getElementById('editModeBtn').style.background = isEditMode ? "#e74c3c" : "#34495e";
+        
+        // Hide the manual input area when entering edit mode
+        if (isEditMode) {
+            document.getElementById('manualInputArea').style.display = 'none';
+            productToAdd = null;
+        }
     }
 
     function deleteProduct(id, event) {
         event.stopPropagation(); // Prevent card click
-        if(confirm("Are you sure you want to permanently delete this item?")) {
-            inventory = inventory.filter(item => item.id !== id);
-            saveInventory();
-            renderGrid();
-        }
+        showConfirmationModal('delete_prod', id);
+    }
+
+    function deleteProductConfirmed(id) {
+        inventory = inventory.filter(item => item.id !== id);
+        saveInventory();
+        renderGrid();
+        showModalMessage("Success", "Item deleted successfully.");
     }
 
     function renderGrid() {
@@ -431,7 +568,7 @@
         grid.innerHTML = '';
         
         if (inventory.length === 0) {
-            grid.innerHTML = '<p style="color:#888; grid-column: 1/-1; text-align:center;">No items currently. Add some using the form above.</p>';
+            grid.innerHTML = '<p style="color:#888; grid-column: 1/-1; text-align:center;">No items currently exist. Use the form above to add some.</p>';
             return;
         }
 
@@ -453,23 +590,53 @@
         else grid.classList.remove('edit-mode');
     }
 
-    // --- CART FUNCTIONS ---
+    // --- MANUAL QUANTITY & CART FUNCTIONS ---
     function addToCart(product) {
         if(isEditMode) {
-            alert("Exit 'Edit / Remove' mode before adding items to the cart.");
+            showModalMessage("Error", "Exit 'Edit / Delete' mode before adding items to the cart.");
             return;
         }
-        const existingItem = currentCart.find(item => item.id === product.id);
+        
+        productToAdd = product;
+        document.getElementById('manualItemName').innerText = product.name;
+        document.getElementById('manualQtyInput').value = 1;
+        document.getElementById('manualInputArea').style.display = 'block';
+        document.getElementById('qtyError').style.display = 'none'; // Hide error initially
+        document.getElementById('manualQtyInput').focus();
+    }
+    
+    function confirmAddToCart() {
+        if (!productToAdd) return;
+
+        const qtyInput = document.getElementById('manualQtyInput');
+        const qty = parseInt(qtyInput.value);
+        const errorEl = document.getElementById('qtyError');
+
+        if (isNaN(qty) || qty <= 0) {
+            errorEl.style.display = 'block';
+            return;
+        }
+        errorEl.style.display = 'none';
+
+        const existingItem = currentCart.find(item => item.id === productToAdd.id);
         
         if (existingItem) {
-            existingItem.qty++;
+            existingItem.qty += qty;
         } else {
-            currentCart.push({ ...product, qty: 1 });
+            currentCart.push({ ...productToAdd, qty: qty });
         }
+
+        // Reset and hide input area
+        productToAdd = null;
+        qtyInput.value = 1;
+        document.getElementById('manualInputArea').style.display = 'none';
+
         renderCart();
+        showModalMessage("Success", `Item "${currentCart[currentCart.length - 1].name}" added to cart with quantity ${qty}.`);
     }
 
     function changeQty(index, change) {
+        // Only allow manual adjustments in cart for simplicity after initial add
         currentCart[index].qty += change;
         if (currentCart[index].qty <= 0) {
             currentCart.splice(index, 1);
@@ -503,7 +670,7 @@
                     <button class="qty-btn" onclick="changeQty(${index}, -1)">-</button>
                     <span class="qty-val">${item.qty}</span>
                     <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
-                    <span style="min-width:40px; text-align:right; font-weight:bold;">${itemTotal}</span>
+                    <span style="min-width:40px; text-align:right; font-weight:bold;">${itemTotal.toFixed(2)}</span>
                     <span class="remove-btn" onclick="removeFromCart(${index})">&times;</span>
                 </div>
             `;
@@ -514,7 +681,7 @@
             list.innerHTML = '<div style="text-align:center; color:#999; margin-top:30px;">Cart is empty.</div>';
         }
         
-        totalEl.innerText = total;
+        totalEl.innerText = total.toFixed(2);
     }
 
     // --- CHECKOUT & PRINT FUNCTIONS ---
@@ -525,11 +692,15 @@
     }
     
     function completeSale() {
+        // Use Confirmation Modal now
         if (currentCart.length === 0) {
-            alert("The cart is empty!");
+            showModalMessage("Error", "Cart is empty.");
             return;
         }
+        showConfirmationModal('sale');
+    }
 
+    function completeSaleConfirmed() {
         let saleTotal = 0;
         let saleItems = [];
 
@@ -548,11 +719,10 @@
         // Save Transaction History
         const transaction = {
             id: Date.now(),
-            // Store date using ISO format for easy comparison, and local string for display
             date: new Date().toLocaleString(),
             isoDate: new Date().toISOString(), 
             items: saleItems,
-            total: saleTotal,
+            total: saleTotal.toFixed(2),
             type: 'sale'
         };
         
@@ -565,21 +735,19 @@
         // Clear Cart
         currentCart = [];
         renderCart();
-        alert("Sale Completed and Saved!");
+        showModalMessage("Success", "Sale completed and saved!");
     }
     
     function printLastSale() {
         if (!lastTransaction) {
-            alert("No sale has been completed yet to print the receipt.");
+            showModalMessage("Error", "No sale completed to print a receipt.");
             return;
         }
         printReceipt(lastTransaction);
     }
     
     function printReceipt(transaction) {
-        // 1. Hide the report template to prevent interference
         document.getElementById('printable-datewise').style.display = 'none';
-        // 2. Ensure single receipt template is visible (though @media print handles this too, safer to set)
         document.getElementById('printable-receipt').style.display = 'block';
 
         const rItems = document.getElementById('r-items');
@@ -598,30 +766,28 @@
 
         window.print();
         
-        // 3. Hide the single receipt template after printing
         document.getElementById('printable-receipt').style.display = 'none';
     }
 
     function updateDashboard() {
         const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
         
-        document.getElementById('totalItems').innerText = salesData.items;
-        document.getElementById('totalServices').innerText = salesData.services;
-        document.getElementById('totalAQSales').innerText = salesData.aq;
-        document.getElementById('totalExpenses').innerText = totalExpenses;
+        document.getElementById('totalItems').innerText = salesData.items.toFixed(2);
+        document.getElementById('totalServices').innerText = salesData.services.toFixed(2);
+        document.getElementById('totalAQSales').innerText = salesData.aq.toFixed(2);
+        document.getElementById('totalExpenses').innerText = totalExpenses.toFixed(2);
         
         const grandTotal = salesData.items + salesData.services + salesData.aq - totalExpenses;
-        document.getElementById('grandTotal').innerText = grandTotal; 
+        document.getElementById('grandTotal').innerText = grandTotal.toFixed(2); 
     }
 
-    function resetDay() {
-        if(confirm("ALERT: Are you sure you want to reset today's account to ZERO? (History will not be deleted, only dashboard will reset)")) {
-            salesData = { items: 0, services: 0, aq: 0 };
-            expenses = [];
-            localStorage.setItem('pos_sales_v4', JSON.stringify(salesData));
-            localStorage.setItem('pos_expenses_v4', JSON.stringify(expenses));
-            updateDashboard();
-        }
+    function resetDayConfirmed() {
+        salesData = { items: 0, services: 0, aq: 0 };
+        expenses = [];
+        localStorage.setItem('pos_sales_v4', JSON.stringify(salesData));
+        localStorage.setItem('pos_expenses_v4', JSON.stringify(expenses));
+        updateDashboard();
+        showModalMessage("Success", "Today's totals have been reset to zero.");
     }
     
     // --- EXPENSE FUNCTIONS ---
@@ -637,12 +803,12 @@
             const newExpense = { 
                 id: Date.now(), 
                 name, 
-                amount, 
+                amount: amount.toFixed(2), 
                 date: new Date().toLocaleString(), 
-                isoDate: new Date().toISOString(), // Store ISO date for comparison
+                isoDate: new Date().toISOString(), 
                 type: 'expense' 
             };
-            expenses.unshift(newExpense); // Add to top
+            expenses.unshift(newExpense); 
             saveExpenses();
             updateDashboard();
             
@@ -650,47 +816,57 @@
             document.getElementById('expenseName').value = '';
             document.getElementById('expenseAmount').value = '';
             
-            alert("Expense Added!");
+            showModalMessage("Success", "Expense added successfully!");
         } else {
-            alert("Expense Name and Amount (greater than zero) are both required!");
+            showModalMessage("Error", "Expense name and amount (greater than zero) are both required.");
         }
     }
     
     function deleteExpense(id) {
+        const expense = expenses.find(exp => exp.id === id);
+        if (expense) {
+             showConfirmationModal('delete_exp', expense);
+        }
+    }
+
+    function deleteExpenseConfirmed(id) {
         // Find expense index
         const index = expenses.findIndex(exp => exp.id === id);
         if (index > -1) {
-            const expName = expenses[index].name;
-            if(confirm(`Are you sure you want to delete the expense: ${expName}?`)) {
-                expenses.splice(index, 1);
-                saveExpenses();
-                updateDashboard();
-                showHistory(); // Refresh modal
-            }
+            expenses.splice(index, 1);
+            saveExpenses();
+            updateDashboard();
+            showHistory(); // Refresh modal
+            showModalMessage("Success", "Expense deleted successfully.");
         }
     }
 
     // --- HISTORY MODAL ---
     function deleteTransaction(id) {
+        const txn = transactionHistory.find(txn => txn.id === id);
+        if (txn) {
+            showConfirmationModal('delete_txn', txn);
+        }
+    }
+
+    function deleteTransactionConfirmed(id) {
         // Find transaction index
         const index = transactionHistory.findIndex(txn => txn.id === id);
         if (index > -1) {
-            const txnTotal = transactionHistory[index].total;
-            if(confirm(`Are you sure you want to delete this Sale transaction? Total: ${txnTotal}`)) {
-                const deletedTxn = transactionHistory.splice(index, 1)[0];
-                
-                // Recalculate sales data by subtracting the deleted transaction's items
-                deletedTxn.items.forEach(p => {
-                    const lineTotal = p.price * p.qty;
-                    if (p.type === 'item') salesData.items -= lineTotal;
-                    else if (p.type === 'service') salesData.services -= lineTotal;
-                    else if (p.type === 'aq') salesData.aq -= lineTotal;
-                });
-                
-                saveSalesData();
-                updateDashboard();
-                showHistory(); // Refresh modal
-            }
+            const deletedTxn = transactionHistory.splice(index, 1)[0];
+            
+            // Recalculate sales data by subtracting the deleted transaction's items
+            deletedTxn.items.forEach(p => {
+                const lineTotal = parseFloat(p.total); // use the total saved in history
+                if (p.type === 'item') salesData.items -= lineTotal;
+                else if (p.type === 'service') salesData.services -= lineTotal;
+                else if (p.type === 'aq') salesData.aq -= lineTotal;
+            });
+            
+            saveSalesData();
+            updateDashboard();
+            showHistory(); // Refresh modal
+            showModalMessage("Success", "Sale transaction deleted successfully.");
         }
     }
 
@@ -699,7 +875,7 @@
         list.innerHTML = '';
         
         if (data.length === 0) {
-            list.innerHTML = `<p style="text-align:center">No past ${listId === 'historyList' ? 'sales' : 'expenses'} record found.</p>`;
+            list.innerHTML = `<p style="text-align:center">No past ${listId === 'historyList' ? 'sales' : 'expense'} records found.</p>`;
             return;
         }
 
@@ -743,10 +919,6 @@
 
         document.getElementById('historyModal').style.display = 'flex';
     }
-
-    function closeModal(id) {
-        document.getElementById(id).style.display = 'none';
-    }
     
     // --- DATEWISE PRINTING ---
     function printDatewiseTransactions() {
@@ -754,28 +926,25 @@
         const toDateStr = document.getElementById('toDate').value;
 
         if (!fromDateStr || !toDateStr) {
-            alert("Please select both 'From Date' and 'To Date'.");
+            showModalMessage("Error", "Please select both 'From Date' and 'To Date'.");
             return;
         }
 
-        // Convert selected dates to Date objects (start of day for filtering)
         const fromDate = new Date(fromDateStr);
         fromDate.setHours(0, 0, 0, 0);
         const toDate = new Date(toDateStr);
         toDate.setHours(23, 59, 59, 999);
 
-        // Filter sales transactions
         const filteredTransactions = transactionHistory.filter(txn => {
             if (txn.type !== 'sale') return false;
             
-            // Use isoDate if available, otherwise fallback to parsing local string
             const txnDate = txn.isoDate ? new Date(txn.isoDate) : parseTransactionDate(txn.date);
 
             return txnDate >= fromDate && txnDate <= toDate;
         }).sort((a, b) => a.id - b.id); // Sort by oldest first
 
         if (filteredTransactions.length === 0) {
-            alert("No sale transactions found in the selected date range.");
+            showModalMessage("Report Not Found", "No sale transactions found within the selected date range.");
             return;
         }
 
@@ -783,7 +952,7 @@
         let reportHtml = '';
 
         filteredTransactions.forEach(txn => {
-            totalSales += txn.total;
+            totalSales += parseFloat(txn.total);
             
             // Transaction Header for Report
             reportHtml += `<div class="report-txn">`;
@@ -812,21 +981,18 @@
             reportHtml += `</div>`;
         });
         
-        // 1. Hide the single receipt template
         document.getElementById('printable-receipt').style.display = 'none';
-        // 2. Ensure datewise report template is visible
         document.getElementById('printable-datewise').style.display = 'block';
 
         // Populate the printable area for datewise report
         document.getElementById('report-date-range').innerText = `Report From: ${fromDateStr} To: ${toDateStr}`;
-        document.getElementById('report-print-date').innerText = `Printed On: ${new Date().toLocaleString()}`;
+        document.getElementById('report-print-date').innerText = `Print Date: ${new Date().toLocaleString()}`;
         document.getElementById('report-transactions').innerHTML = reportHtml;
-        document.getElementById('report-grand-total').innerText = totalSales;
+        document.getElementById('report-grand-total').innerText = totalSales.toFixed(2);
         
         // Trigger Print
         window.print();
 
-        // 3. Hide the datewise template after printing
         document.getElementById('printable-datewise').style.display = 'none';
     }
 
@@ -846,6 +1012,7 @@
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
+        showModalMessage("Success", "Data successfully backed up. Check your downloads folder.");
     }
 
     function restoreData(input) {
@@ -857,41 +1024,49 @@
             try {
                 const data = JSON.parse(e.target.result);
                 if (data.inventory && data.salesData) {
-                    if(confirm("Do you really want to restore old data? Current data will be overwritten.")) {
-                        localStorage.setItem('pos_inventory_v4', JSON.stringify(data.inventory));
-                        localStorage.setItem('pos_sales_v4', JSON.stringify(data.salesData));
-                        localStorage.setItem('pos_expenses_v4', JSON.stringify(data.expenses || []));
-                        localStorage.setItem('pos_history_v4', JSON.stringify(data.history || []));
-                        // Last transaction will be null until next sale
-                        localStorage.removeItem('pos_last_txn_v4'); 
-                        location.reload(); 
-                    }
+                    // Pass data to confirmation modal
+                    showConfirmationModal('restore', data); 
                 } else {
-                    alert("Incorrect file format. Missing inventory or salesData.");
+                    showModalMessage("Error", "Incorrect file format. Inventory or sales data missing.");
                 }
             } catch (err) {
                 console.error(err);
-                alert("Issue reading the file. Check console for details.");
+                showModalMessage("Error", "Problem reading the file. Check console for details.");
             }
         };
         reader.readAsText(file);
     }
     
+    function restoreDataConfirmed(data) {
+        localStorage.setItem('pos_inventory_v4', JSON.stringify(data.inventory));
+        localStorage.setItem('pos_sales_v4', JSON.stringify(data.salesData));
+        localStorage.setItem('pos_expenses_v4', JSON.stringify(data.expenses || []));
+        localStorage.setItem('pos_history_v4', JSON.stringify(data.history || []));
+        localStorage.removeItem('pos_last_txn_v4'); 
+        location.reload(); 
+    }
+    
     function clearAllData() {
-        if(confirm("DANGER: Are you sure you want to delete ALL data (Inventory, Sales, Expenses, History)? This cannot be undone!")) {
-            localStorage.removeItem('pos_inventory_v4');
-            localStorage.removeItem('pos_sales_v4');
-            localStorage.removeItem('pos_expenses_v4');
-            localStorage.removeItem('pos_history_v4');
-            localStorage.removeItem('pos_last_txn_v4');
-            location.reload(); // Refresh to start clean
-        }
+        // Use Confirmation Modal now
+        showConfirmationModal('clear');
+    }
+
+    function clearAllDataConfirmed() {
+        localStorage.removeItem('pos_inventory_v4');
+        localStorage.removeItem('pos_sales_v4');
+        localStorage.removeItem('pos_expenses_v4');
+        localStorage.removeItem('pos_history_v4');
+        localStorage.removeItem('pos_last_txn_v4');
+        location.reload(); // Refresh to start clean
     }
 
     // Close modal on outside click
     window.onclick = function(event) {
         if (event.target == document.getElementById('historyModal')) {
             closeModal('historyModal');
+        }
+        if (event.target == document.getElementById('messageModal')) {
+            closeModal('messageModal');
         }
     }
 </script>
